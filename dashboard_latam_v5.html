@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LATAM Media Content — Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d0d;--bg2:#161616;--bg3:#1e1e1e;--bg4:#252525;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --text:#f0f0f0;--muted:#888;--muted2:#555;
+  --accent:#00d4aa;--blue:#5b8ef0;--purple:#c084f5;--warn:#f0a030;--danger:#e05555;--good:#4ecb71;
+  --radius:10px;
+}
+body{background:var(--bg);color:var(--text);font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.5;min-height:100vh}
+
+header{background:var(--bg2);border-bottom:1px solid var(--border);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:14px}
+.live-badge{background:var(--accent);color:#000;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 10px;border-radius:20px;text-transform:uppercase}
+header h1{font-size:16px;font-weight:600;letter-spacing:-.01em}
+header p{font-size:12px;color:var(--muted);margin-top:2px}
+.header-right{display:flex;align-items:center;gap:10px}
+#status{font-size:12px;color:var(--muted)}
+.refresh-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:7px 14px;border-radius:7px;font-size:13px;cursor:pointer;transition:background .15s}
+.refresh-btn:hover{background:#2a2a2a}
+
+/* Filter bar */
+.filter-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.filter-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-right:4px}
+.filter-btn{background:var(--bg3);border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.filter-btn:hover{border-color:var(--border2);color:var(--text)}
+.filter-btn.active{background:rgba(0,212,170,0.12);border-color:var(--accent);color:var(--accent);font-weight:600}
+.filter-divider{width:1px;height:20px;background:var(--border);margin:0 4px}
+
+main{padding:28px 32px;max-width:1500px;margin:0 auto}
+
+.insight-banner{background:linear-gradient(135deg,rgba(0,212,170,0.08),rgba(91,142,240,0.08));border:1px solid rgba(0,212,170,0.2);border-radius:var(--radius);padding:18px 24px;margin-bottom:28px}
+.insight-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.insight-text{font-size:14px;color:var(--text);line-height:1.6}
+.insight-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.pill{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500}
+.pill-green{background:rgba(78,203,113,0.12);color:var(--good)}
+.pill-blue{background:rgba(91,142,240,0.12);color:var(--blue)}
+.pill-warn{background:rgba(240,160,48,0.12);color:var(--warn)}
+.pill-purple{background:rgba(192,132,245,0.12);color:var(--purple)}
+
+.view-title{font-size:28px;font-weight:700;letter-spacing:-.03em;color:var(--accent);margin-bottom:4px}
+.view-subtitle{font-size:13px;color:var(--muted);margin-bottom:24px}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin-bottom:28px}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kpi-color,var(--accent))}
+.kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.kpi-value{font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1}
+.kpi-sub{font-size:12px;color:var(--muted);margin-top:4px}
+
+.section{margin-bottom:28px}
+.section-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.section-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);white-space:nowrap}
+.section-line{flex:1;height:1px;background:var(--border)}
+
+.canal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.canal-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px}
+.canal-name{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.canal-piezas{font-size:22px;font-weight:700}
+.canal-valor{font-size:13px;color:var(--accent);margin-top:4px}
+.canal-note{font-size:11px;color:var(--muted);margin-top:4px;font-style:italic}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:1000px){.two-col{grid-template-columns:1fr}.canal-grid{grid-template-columns:1fr}}
+
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.chart-card-title{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px}
+.chart-wrap{position:relative;width:100%}
+
+.person-table{width:100%;border-collapse:collapse}
+.person-table th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;text-align:right;padding:0 10px 8px;font-weight:500}
+.person-table th:first-child{text-align:left}
+.person-table td{padding:7px 10px;font-size:13px;text-align:right;border-top:1px solid var(--border)}
+.person-table td:first-child{text-align:left;font-weight:500}
+.person-table tr:hover td{background:rgba(255,255,255,0.03)}
+.pub-bar-wrap{display:flex;align-items:center;gap:6px;justify-content:flex-end}
+.pub-bar{width:44px;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.pub-bar-fill{height:100%;border-radius:2px}
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+.badge-good{background:rgba(78,203,113,0.15);color:var(--good)}
+.badge-warn{background:rgba(240,160,48,0.15);color:var(--warn)}
+.badge-bad{background:rgba(224,85,85,0.15);color:var(--danger)}
+
+.partner-list{display:flex;flex-direction:column;gap:6px}
+.partner-row{display:flex;align-items:center;padding:9px 12px;background:var(--bg3);border-radius:7px;gap:10px}
+.partner-name{font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.partner-piezas{font-size:12px;color:var(--muted);min-width:50px;text-align:right}
+.partner-valor{font-size:13px;color:var(--accent);font-weight:600;min-width:75px;text-align:right}
+.partner-avg{font-size:11px;color:var(--muted);min-width:60px;text-align:right}
+.mini-bar-wrap{width:70px}
+.mini-bar{height:3px;background:var(--bg);border-radius:2px;overflow:hidden}
+.mini-bar-fill{height:100%;background:var(--accent);border-radius:2px}
+
+.matrix-wrap{overflow-x:auto}
+.matrix-table{border-collapse:collapse;font-size:11px;width:100%}
+.matrix-table th{padding:6px 10px;color:var(--muted);font-weight:500;white-space:nowrap;text-align:center}
+.matrix-table th:first-child{text-align:left}
+.matrix-table td{padding:5px 10px;text-align:center;border:1px solid var(--border);border-radius:3px}
+.matrix-table td:first-child{text-align:left;font-weight:500;color:var(--text);border:none;white-space:nowrap}
+
+/* Anual: monthly bars */
+.monthly-chart-wrap{position:relative;width:100%}
+
+#loading{text-align:center;padding:80px 20px;color:var(--muted)}
+#loading h2{font-size:20px;margin-bottom:8px;color:var(--text)}
+#error-state{display:none;text-align:center;padding:80px 20px;color:var(--danger)}
+#dashboard{display:none}
+.spinner{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span class="live-badge">Live</span>
+    <div>
+      <h1>LATAM Media Content</h1>
+      <p>Dashboard de seguimiento</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="status"></span>
+    <button class="refresh-btn" onclick="refresh()">↻ Actualizar</button>
+  </div>
+</header>
+
+<div class="filter-bar">
+  <span class="filter-label">Vista</span>
+  <button class="filter-btn" id="btn-anual" onclick="setView('anual')">📅 2026 completo</button>
+  <div class="filter-divider"></div>
+  <span class="filter-label">Mes</span>
+  <button class="filter-btn" id="btn-1" onclick="setView('mes',1)">Ene</button>
+  <button class="filter-btn" id="btn-2" onclick="setView('mes',2)">Feb</button>
+  <button class="filter-btn" id="btn-3" onclick="setView('mes',3)">Mar</button>
+  <button class="filter-btn" id="btn-4" onclick="setView('mes',4)">Abr</button>
+  <button class="filter-btn" id="btn-5" onclick="setView('mes',5)">May</button>
+  <button class="filter-btn active" id="btn-6" onclick="setView('mes',6)">Jun</button>
+  <button class="filter-btn" id="btn-7" onclick="setView('mes',7)">Jul</button>
+  <button class="filter-btn" id="btn-8" onclick="setView('mes',8)">Ago</button>
+  <button class="filter-btn" id="btn-9" onclick="setView('mes',9)">Sep</button>
+  <button class="filter-btn" id="btn-10" onclick="setView('mes',10)">Oct</button>
+  <button class="filter-btn" id="btn-11" onclick="setView('mes',11)">Nov</button>
+  <button class="filter-btn" id="btn-12" onclick="setView('mes',12)">Dic</button>
+</div>
+
+<main>
+  <div id="loading"><div class="spinner"></div><h2>Cargando datos...</h2><p>Conectando con Google Sheets</p></div>
+  <div id="error-state"><h2>No se pudo conectar</h2><p id="error-msg"></p></div>
+
+  <div id="dashboard">
+    <div class="insight-banner">
+      <div class="insight-label">📊 Resumen automático</div>
+      <div class="insight-text" id="insight-text">—</div>
+      <div class="insight-pills" id="insight-pills"></div>
+    </div>
+
+    <div class="view-title" id="view-title">—</div>
+    <div class="view-subtitle" id="view-subtitle">—</div>
+
+    <div class="kpi-grid">
+      <div class="kpi" style="--kpi-color:var(--accent)">
+        <div class="kpi-label">Piezas enviadas</div>
+        <div class="kpi-value" id="k-total" style="color:var(--accent)">—</div>
+        <div class="kpi-sub" id="k-daily-avg">—</div>
+      </div>
+      <div class="kpi" style="--kpi-color:var(--good)">
+        <div class="kpi-label">Publicadas</div>
+        <div class="kpi-value" id="k-published" style="color:var(--good)">—</div>
+        <div class="kpi-sub" id="k-pub-rate">—</div>
+      </div>
+      <div class="kpi" style="--kpi-color:var(--warn)">
+        <div class="kpi-label">Sin publicar</div>
+        <div class="kpi-value" id="k-unpublished" style="color:var(--warn)">—</div>
+        <div class="kpi-sub" id="k-unpub-note">—</div>
+      </div>
+      <div class="kpi" style="--kpi-color:var(--blue)">
+        <div class="kpi-label">Valor generado</div>
+        <div class="kpi-value" id="k-valor" style="color:var(--blue);font-size:22px">—</div>
+        <div class="kpi-sub" id="k-valor-avg">—</div>
+      </div>
+      <div class="kpi" style="--kpi-color:var(--purple)">
+        <div class="kpi-label">Proactivo</div>
+        <div class="kpi-value" id="k-proactivo" style="color:var(--purple)">—</div>
+        <div class="kpi-sub" id="k-proa-pct">—</div>
+      </div>
+      <div class="kpi" style="--kpi-color:var(--muted)">
+        <div class="kpi-label">Partners activos</div>
+        <div class="kpi-value" id="k-partners" style="color:var(--muted)">—</div>
+        <div class="kpi-sub">partners con piezas</div>
+      </div>
+    </div>
+
+    <!-- Canal -->
+    <div class="section">
+      <div class="section-header"><span class="section-title">Canales</span><span class="section-line"></span></div>
+      <div class="canal-grid">
+        <div class="canal-card"><div class="canal-name">🌐 Web</div><div class="canal-piezas" id="c-web-piezas">—</div><div class="canal-valor" id="c-web-valor">—</div></div>
+        <div class="canal-card"><div class="canal-name">📱 Social</div><div class="canal-piezas" id="c-social-piezas">—</div><div class="canal-valor" id="c-social-valor">—</div></div>
+        <div class="canal-card"><div class="canal-name">📺 TV</div><div class="canal-piezas" id="c-tv-piezas">—</div><div class="canal-note">Sin valorización por ahora</div></div>
+      </div>
+    </div>
+
+    <!-- Gráfico temporal: diario (mes) o mensual (anual) -->
+    <div class="two-col section">
+      <div class="chart-card">
+        <div class="chart-card-title" id="temporal-title">Actividad</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="temporalChart" role="img" aria-label="Actividad temporal"></canvas></div>
+      </div>
+      <div class="chart-card" id="weekly-card">
+        <div class="chart-card-title">Evolución semanal</div>
+        <div id="weekly-bars" style="display:flex;gap:8px;align-items:flex-end;height:120px;margin-bottom:8px"></div>
+        <div id="weekly-labels" style="display:flex;gap:8px"></div>
+      </div>
+    </div>
+
+    <!-- Valor por deporte + tipo -->
+    <div class="two-col section">
+      <div class="chart-card">
+        <div class="chart-card-title">Valor por deporte</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="deporteValorChart" role="img" aria-label="Valor por deporte"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Valor por tipo de gráfica</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="tipoValorChart" role="img" aria-label="Valor por tipo de gráfica"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Equipo -->
+    <div class="section">
+      <div class="section-header"><span class="section-title">Equipo</span><span class="section-line"></span></div>
+      <div class="chart-card">
+        <table class="person-table">
+          <thead><tr>
+            <th>Persona</th><th>Enviadas</th><th>Publicadas</th><th>% pub</th>
+            <th>Proactivo</th><th>Valor proactivo</th><th>Valor total</th><th>Avg/pieza</th>
+            <th>Web</th><th>TV</th><th>Social</th>
+          </tr></thead>
+          <tbody id="person-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Canal x persona -->
+    <div class="section">
+      <div class="section-header"><span class="section-title">Canal por persona</span><span class="section-line"></span></div>
+      <div class="chart-card">
+        <div class="chart-wrap" style="height:260px"><canvas id="canalPersonChart" role="img" aria-label="Canal por persona"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Partners -->
+    <div class="two-col section">
+      <div class="chart-card">
+        <div class="chart-card-title">Top partners por valor</div>
+        <div id="partner-list-valor" class="partner-list"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Top partners por volumen</div>
+        <div id="partner-list-vol" class="partner-list"></div>
+      </div>
+    </div>
+
+    <!-- Deporte + tipo -->
+    <div class="two-col section">
+      <div class="chart-card">
+        <div class="chart-card-title">Mix de deporte</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="deporteChart" role="img" aria-label="Mix de deporte"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Tipo de gráfica</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="tipoChart" role="img" aria-label="Tipo de gráfica"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Matriz -->
+    <div class="section">
+      <div class="section-header"><span class="section-title">Tipo de gráfica × deporte</span><span class="section-line"></span></div>
+      <div class="chart-card"><div class="matrix-wrap"><table class="matrix-table" id="matrix-table"></table></div></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const URL_ANUAL = 'https://script.google.com/macros/s/AKfycbynoc2tRkHgmxvUCK-WkeIJI9EIfdy_QsznWDoymC3VBzjb0HiliY1rTE3eukf_Q9ly-w/exec';
+const URL_MES   = 'https://script.google.com/macros/s/AKfycbxmUyC2IuxSS295AkayPhR3nD_0iUKBXaPSWl6JhTnDa-QVygPn4A2tJQJTyMjChdnNWw/exec';
+
+const MONTH_NAMES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const SPORT_COLORS = {Futbol:'#5b8ef0',Baseball:'#f0a030',Basket:'#c084f5',Motosport:'#4ecb71',Tenis:'#f06090',default:'#888'};
+const COLORS = {accent:'#00d4aa',blue:'#5b8ef0',purple:'#c084f5',warn:'#f0a030',good:'#4ecb71',danger:'#e05555'};
+
+let allData = [];
+let anualData = null;
+let mesData = null;
+let currentView = 'mes';
+let currentMonth = 6;
+let charts = {};
+
+function destroyCharts(){ Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}}); charts={}; }
+function fmt(n){ return Math.round(n).toLocaleString('es-AR'); }
+function fmtK(n){ return n>=1000?(n/1000).toFixed(1).replace('.0','')+'k':fmt(n); }
+function pct(a,b){ return b>0?Math.round(a/b*100):0; }
+function parseDate(s){ const p=String(s).split('/'); return new Date(p[2],p[1]-1,p[0]); }
+
+async function fetchMes() {
+  document.getElementById('loading').style.display='block';
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('error-state').style.display='none';
+  document.getElementById('status').textContent='Cargando...';
+  try {
+    const res = await fetch(URL_MES);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    mesData = (await res.json()).filter(r=>r['PARTNER']&&r['PARTNER']!=='PARTNER');
+    const now = new Date();
+    document.getElementById('status').textContent=`Actualizado ${now.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}`;
+    render();
+  } catch(e) {
+    document.getElementById('loading').style.display='none';
+    document.getElementById('error-state').style.display='block';
+    document.getElementById('error-msg').textContent=e.message;
+    document.getElementById('status').textContent='Error al conectar';
+  }
+}
+
+async function fetchAnual() {
+  document.getElementById('loading').style.display='block';
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('status').textContent='Cargando año completo...';
+  try {
+    const res = await fetch(URL_ANUAL);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    anualData = (await res.json()).filter(r=>r['PARTNER']&&r['PARTNER']!=='PARTNER');
+    const now = new Date();
+    document.getElementById('status').textContent=`Actualizado ${now.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}`;
+    render();
+  } catch(e) {
+    document.getElementById('loading').style.display='none';
+    document.getElementById('error-state').style.display='block';
+    document.getElementById('error-msg').textContent=e.message;
+    document.getElementById('status').textContent='Error al conectar';
+  }
+}
+
+function refresh(){
+  if(currentView==='anual'){ anualData=null; fetchAnual(); }
+  else { mesData=null; fetchMes(); }
+}
+
+async function setView(type, month) {
+  currentView = type;
+  currentMonth = month || null;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  if(type==='anual') document.getElementById('btn-anual').classList.add('active');
+  else document.getElementById(`btn-${month}`).classList.add('active');
+
+  if(type==='anual' && !anualData) { await fetchAnual(); return; }
+  if(type==='mes' && !mesData) { await fetchMes(); return; }
+  render();
+}
+
+function getFilteredData() {
+  if(currentView==='anual') return anualData || [];
+  if(!mesData) return [];
+  if(!currentMonth) return mesData;
+  return mesData.filter(r=>{
+    const fecha = String(r['FECHA']||'');
+    const parts = fecha.split('/');
+    if(parts.length<3) return false;
+    return parseInt(parts[1])===currentMonth && parts[2]==='2026';
+  });
+}
+
+function render() {
+  destroyCharts();
+  const data = getFilteredData();
+  if(!data.length){ return; }
+
+  // Title
+  const isAnual = currentView==='anual';
+  document.getElementById('view-title').textContent = isAnual ? 'AÑO 2026' : `${MONTH_NAMES[currentMonth]} 2026`;
+
+  // Dates
+  const dates = [...new Set(data.map(r=>r['FECHA']).filter(Boolean))].sort((a,b)=>parseDate(a)-parseDate(b));
+  document.getElementById('view-subtitle').textContent = isAnual
+    ? `${dates.length} días de actividad · ${[...new Set(data.map(r=>parseInt(String(r['FECHA']||'').split('/')[1])).filter(Boolean))].length} meses`
+    : `Actualizado al ${dates[dates.length-1]||'—'} · ${dates.length} días de actividad`;
+
+  // KPIs
+  const total = data.length;
+  const published = data.filter(r=>r['ESTADO']==='Published').length;
+  const unpublished = data.filter(r=>r['ESTADO']==='Unpublished').length;
+  const proactivo = data.filter(r=>r['TIPO']==='Proactivo').length;
+  const valor = data.reduce((s,r)=>s+(parseFloat(r['Valor if published'])||0),0);
+  const valorAvg = published>0?valor/published:0;
+  const partners = new Set(data.map(r=>r['PARTNER'])).size;
+  const days = dates.length;
+
+  document.getElementById('k-total').textContent=fmt(total);
+  document.getElementById('k-daily-avg').textContent=days>0?`~${Math.round(total/days)} por día`:'';
+  document.getElementById('k-published').textContent=fmt(published);
+  document.getElementById('k-pub-rate').textContent=`${pct(published,total)}% tasa de publicación`;
+  document.getElementById('k-unpublished').textContent=fmt(unpublished);
+  document.getElementById('k-unpub-note').textContent=`${pct(unpublished,total)}% del total`;
+  document.getElementById('k-valor').textContent=`$ ${fmtK(valor)}`;
+  document.getElementById('k-valor-avg').textContent=`$ ${fmt(valorAvg)} promedio/pieza`;
+  document.getElementById('k-proactivo').textContent=fmt(proactivo);
+  document.getElementById('k-proa-pct').textContent=`${pct(proactivo,total)}% del total`;
+  document.getElementById('k-partners').textContent=partners;
+
+  // Canal
+  ['Web','Social','TV'].forEach(canal=>{
+    const rc=data.filter(r=>r['CANAL']===canal);
+    const val=rc.reduce((s,r)=>s+(parseFloat(r['Valor if published'])||0),0);
+    const key=canal.toLowerCase();
+    document.getElementById(`c-${key}-piezas`).textContent=`${fmt(rc.length)} piezas`;
+    if(canal!=='TV') document.getElementById(`c-${key}-valor`).textContent=val>0?`$ ${fmt(val)} valor`:'Sin valor asignado';
+  });
+
+  // Temporal chart: monthly (anual) or daily (mes)
+  document.getElementById('weekly-card').style.display = isAnual?'none':'block';
+  document.getElementById('temporal-title').textContent = isAnual?'Piezas por mes':'Piezas por día';
+
+  if(isAnual) {
+    // Monthly
+    const monthMap={};
+    data.forEach(r=>{
+      const parts=String(r['FECHA']||'').split('/');
+      if(parts.length<3) return;
+      const m=parseInt(parts[1]);
+      if(m>=1&&m<=12) monthMap[m]=(monthMap[m]||0)+1;
+    });
+    const mEntries=Object.entries(monthMap).sort((a,b)=>a[0]-b[0]);
+    charts.temporal=new Chart(document.getElementById('temporalChart'),{
+      type:'bar',
+      data:{labels:mEntries.map(([m])=>MONTH_NAMES[m]),datasets:[{data:mEntries.map(([,v])=>v),backgroundColor:COLORS.accent,borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#666',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#666',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'}}}}
+    });
+  } else {
+    // Daily
+    const dailyMap={};
+    data.forEach(r=>{if(r['FECHA']) dailyMap[r['FECHA']]=(dailyMap[r['FECHA']]||0)+1;});
+    const sortedD=Object.keys(dailyMap).sort((a,b)=>parseDate(a)-parseDate(b));
+    charts.temporal=new Chart(document.getElementById('temporalChart'),{
+      type:'bar',
+      data:{labels:sortedD.map(d=>d.slice(0,5)),datasets:[{data:sortedD.map(d=>dailyMap[d]),backgroundColor:COLORS.accent,borderRadius:3}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#666',font:{size:10},maxRotation:45,autoSkip:false},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#666',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'}}}}
+    });
+
+    // Weekly
+    const weekMap={};
+    data.forEach(r=>{
+      if(!r['FECHA']) return;
+      const d=parseDate(r['FECHA']).getDate();
+      const w=d<=7?1:d<=14?2:d<=21?3:4;
+      weekMap[w]=(weekMap[w]||0)+1;
+    });
+    const wEntries=Object.entries(weekMap).filter(([,v])=>v>0);
+    const maxW=Math.max(...wEntries.map(([,v])=>v));
+    const barsEl=document.getElementById('weekly-bars');
+    const labelsEl=document.getElementById('weekly-labels');
+    barsEl.innerHTML=''; labelsEl.innerHTML='';
+    wEntries.forEach(([w,v])=>{
+      const h=Math.round((v/maxW)*100);
+      barsEl.innerHTML+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+        <span style="font-size:12px;font-weight:700;color:var(--text)">${v}</span>
+        <div style="width:100%;background:var(--bg3);border-radius:6px;overflow:hidden;height:80px;display:flex;align-items:flex-end">
+          <div style="width:100%;height:${h}%;background:var(--blue);border-radius:6px"></div>
+        </div></div>`;
+      labelsEl.innerHTML+=`<div style="flex:1;text-align:center;font-size:10px;color:var(--muted)">Sem ${w}</div>`;
+    });
+  }
+
+  // Valor por deporte
+  const dvMap={};
+  data.forEach(r=>{ const d=r['DEPORTE']; if(!d) return; if(!dvMap[d]) dvMap[d]=0; dvMap[d]+=parseFloat(r['Valor if published'])||0; });
+  const dvE=Object.entries(dvMap).sort((a,b)=>b[1]-a[1]);
+  charts.deporteValor=new Chart(document.getElementById('deporteValorChart'),{
+    type:'bar',
+    data:{labels:dvE.map(([k])=>k),datasets:[{data:dvE.map(([,v])=>v),backgroundColor:dvE.map(([k])=>SPORT_COLORS[k]||SPORT_COLORS.default),borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#666',font:{size:10},callback:v=>'$'+fmtK(v)},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#aaa',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}}}}
+  });
+
+  // Valor por tipo gráfica
+  const tvMap={};
+  data.forEach(r=>{ const t=r['TIPO DE GRÁFICA']; if(!t) return; if(!tvMap[t]) tvMap[t]=0; tvMap[t]+=parseFloat(r['Valor if published'])||0; });
+  const tvE=Object.entries(tvMap).sort((a,b)=>b[1]-a[1]);
+  charts.tipoValor=new Chart(document.getElementById('tipoValorChart'),{
+    type:'bar',
+    data:{labels:tvE.map(([k])=>k),datasets:[{data:tvE.map(([,v])=>v),backgroundColor:COLORS.purple,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#666',font:{size:10},callback:v=>'$'+fmtK(v)},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#aaa',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'}}}}
+  });
+
+  // Person table
+  const personMap={};
+  data.forEach(r=>{
+    const p=r['PERSON']; if(!p) return;
+    if(!personMap[p]) personMap[p]={total:0,pub:0,proa:0,valorProa:0,valor:0,web:0,tv:0,social:0};
+    personMap[p].total++;
+    if(r['ESTADO']==='Published') personMap[p].pub++;
+    if(r['TIPO']==='Proactivo'){personMap[p].proa++;personMap[p].valorProa+=parseFloat(r['Valor if published'])||0;}
+    personMap[p].valor+=parseFloat(r['Valor if published'])||0;
+    if(r['CANAL']==='Web') personMap[p].web++;
+    if(r['CANAL']==='TV') personMap[p].tv++;
+    if(r['CANAL']==='Social') personMap[p].social++;
+  });
+  const tbody=document.getElementById('person-tbody');
+  tbody.innerHTML='';
+  Object.entries(personMap).sort((a,b)=>b[1].valor-a[1].valor).forEach(([name,s])=>{
+    const pr=pct(s.pub,s.total);
+    const barColor=pr>=80?'var(--good)':pr>=60?'var(--warn)':'var(--danger)';
+    const badge=pr>=80?'badge-good':pr>=60?'badge-warn':'badge-bad';
+    const avg=s.pub>0?s.valor/s.pub:0;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${name}</td><td>${fmt(s.total)}</td><td>${fmt(s.pub)}</td>
+      <td><div class="pub-bar-wrap"><div class="pub-bar"><div class="pub-bar-fill" style="width:${pr}%;background:${barColor}"></div></div><span class="badge ${badge}">${pr}%</span></div></td>
+      <td>${fmt(s.proa)} <span style="color:var(--muted);font-size:11px">(${pct(s.proa,s.total)}%)</span></td>
+      <td style="color:var(--purple)">$ ${fmtK(s.valorProa)}</td>
+      <td style="color:var(--accent);font-weight:600">$ ${fmtK(s.valor)}</td>
+      <td style="color:var(--muted)">$ ${fmt(avg)}</td>
+      <td style="color:#aaa">${s.web}</td><td style="color:#aaa">${s.tv}</td><td style="color:#aaa">${s.social}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Canal x persona
+  const pNames=Object.keys(personMap).sort((a,b)=>personMap[b].valor-personMap[a].valor);
+  charts.canalPerson=new Chart(document.getElementById('canalPersonChart'),{
+    type:'bar',
+    data:{labels:pNames,datasets:[
+      {label:'Web',data:pNames.map(p=>personMap[p].web),backgroundColor:COLORS.accent,borderRadius:3},
+      {label:'TV',data:pNames.map(p=>personMap[p].tv),backgroundColor:COLORS.blue,borderRadius:3},
+      {label:'Social',data:pNames.map(p=>personMap[p].social),backgroundColor:COLORS.purple,borderRadius:3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,position:'top',labels:{color:'#888',font:{size:11},boxWidth:10,padding:12}}},
+      scales:{x:{stacked:true,ticks:{color:'#aaa',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}},
+              y:{stacked:true,ticks:{color:'#666',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'}}}}
+  });
+
+  // Partners
+  const partnerMap={};
+  data.forEach(r=>{
+    const p=r['PARTNER']; if(!p) return;
+    if(!partnerMap[p]) partnerMap[p]={total:0,pub:0,valor:0};
+    partnerMap[p].total++;
+    if(r['ESTADO']==='Published') partnerMap[p].pub++;
+    partnerMap[p].valor+=parseFloat(r['Valor if published'])||0;
+  });
+  function renderPList(elId,entries,valKey,valFn,subFn){
+    const el=document.getElementById(elId); el.innerHTML='';
+    const maxV=entries[0]?.[1]?.[valKey]||1;
+    entries.forEach(([name,s],i)=>{
+      const div=document.createElement('div'); div.className='partner-row';
+      div.innerHTML=`<span style="color:var(--muted);font-size:11px;min-width:16px">${i+1}</span>
+        <span class="partner-name">${name}</span>
+        <div class="mini-bar-wrap"><div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.round(s[valKey]/maxV*100)}%"></div></div></div>
+        <span class="partner-piezas">${s.total} pzas</span>
+        <span class="partner-valor">${valFn(s)}</span>
+        <span class="partner-avg">${subFn(s)}</span>`;
+      el.appendChild(div);
+    });
+  }
+  const byVal=Object.entries(partnerMap).sort((a,b)=>b[1].valor-a[1].valor).slice(0,10);
+  const byVol=Object.entries(partnerMap).sort((a,b)=>b[1].total-a[1].total).slice(0,10);
+  renderPList('partner-list-valor',byVal,'valor',s=>`$ ${fmtK(s.valor)}`,s=>`avg $${fmt(s.pub>0?s.valor/s.pub:0)}`);
+  renderPList('partner-list-vol',byVol,'total',s=>`${s.total} pzas`,s=>`${pct(s.pub,s.total)}% pub`);
+
+  // Deporte donut
+  const deMap={};
+  data.forEach(r=>{if(r['DEPORTE']) deMap[r['DEPORTE']]=(deMap[r['DEPORTE']]||0)+1;});
+  const deE=Object.entries(deMap).sort((a,b)=>b[1]-a[1]);
+  charts.deporte=new Chart(document.getElementById('deporteChart'),{
+    type:'doughnut',
+    data:{labels:deE.map(([k,v])=>`${k} (${pct(v,total)}%)`),datasets:[{data:deE.map(([,v])=>v),backgroundColor:deE.map(([k])=>SPORT_COLORS[k]||SPORT_COLORS.default),borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#888',font:{size:11},boxWidth:10,padding:10}}}}
+  });
+
+  // Tipo gráfica
+  const tgMap={};
+  data.forEach(r=>{if(r['TIPO DE GRÁFICA']) tgMap[r['TIPO DE GRÁFICA']]=(tgMap[r['TIPO DE GRÁFICA']]||0)+1;});
+  const tgE=Object.entries(tgMap).sort((a,b)=>b[1]-a[1]);
+  charts.tipo=new Chart(document.getElementById('tipoChart'),{
+    type:'bar',
+    data:{labels:tgE.map(([k])=>k),datasets:[{data:tgE.map(([,v])=>v),backgroundColor:COLORS.blue,borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#666',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#aaa',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'}}}}
+  });
+
+  // Matriz
+  const allTipos=[...new Set(data.map(r=>r['TIPO DE GRÁFICA']).filter(Boolean))].sort();
+  const allDeportes=[...new Set(data.map(r=>r['DEPORTE']).filter(Boolean))].sort();
+  const matData={};
+  data.forEach(r=>{ const t=r['TIPO DE GRÁFICA'],d=r['DEPORTE']; if(!t||!d) return; if(!matData[t]) matData[t]={}; matData[t][d]=(matData[t][d]||0)+1; });
+  const maxCell=Math.max(...allTipos.flatMap(t=>allDeportes.map(d=>matData[t]?.[d]||0)));
+  const table=document.getElementById('matrix-table');
+  table.innerHTML=`<tr><th></th>${allDeportes.map(d=>`<th>${d}</th>`).join('')}</tr>`
+    +allTipos.map(t=>`<tr><td>${t}</td>${allDeportes.map(d=>{
+      const v=matData[t]?.[d]||0;
+      const bg=v>0?`rgba(91,142,240,${(v/maxCell)*0.7})`:'transparent';
+      const color=v>0?'#fff':'var(--muted2)';
+      return `<td style="background:${bg};color:${color}">${v||'·'}</td>`;
+    }).join('')}</tr>`).join('');
+
+  // Insight
+  const topP=Object.entries(personMap).sort((a,b)=>b[1].valor-a[1].valor)[0];
+  const topPart=byVal[0];
+  const topDep=deE[0];
+  const proaPct=pct(proactivo,total);
+  let txt = isAnual
+    ? `El año lleva <strong>${fmt(total)} piezas</strong> y <strong>$ ${fmtK(valor)}</strong> de valor generado. `
+    : `Vamos ${dates.length} días de actividad con <strong>${fmt(total)} piezas</strong> y <strong>$ ${fmtK(valor)}</strong> de valor generado. `;
+  txt += `${topP?.[0]} lidera en valor con $ ${fmtK(topP?.[1].valor)}. `;
+  txt += `${topPart?.[0]} es el partner más valioso. `;
+  txt += proaPct>=50?`El equipo va ${proaPct}% proactivo — buen ritmo de iniciativa.`:`El equipo está ${proaPct}% proactivo — hay margen para subir la iniciativa.`;
+  document.getElementById('insight-text').innerHTML=txt;
+  document.getElementById('insight-pills').innerHTML=[
+    {text:`Top persona: ${topP?.[0]}`,cls:'pill-green'},
+    {text:`Top partner: ${topPart?.[0]}`,cls:'pill-blue'},
+    {text:`Deporte líder: ${topDep?.[0]} (${pct(topDep?.[1],total)}%)`,cls:'pill-warn'},
+  ].map(p=>`<span class="pill ${p.cls}">${p.text}</span>`).join('');
+
+  document.getElementById('loading').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+}
+
+fetchMes();
+</script>
+</body>
+</html>
