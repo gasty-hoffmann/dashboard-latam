@@ -314,7 +314,7 @@ async function loadAll() {
   document.getElementById('error-state').style.display='none';
   document.getElementById('status').textContent='Cargando...';
   try {
-    const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(SHEET_URL));
+    const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(SHEET_URL));
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     allData = (await res.json()).filter(r=>r['PARTNER']&&r['PARTNER']!=='PARTNER');
     dataLoaded = true;
